@@ -3,18 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Food Directory (with Dropdown Filters)</title>
+  <title>Food Directory (Dropdown Filters + Debug)</title>
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <style>
     body { font-family: sans-serif; padding: 1rem; }
     table.dataTable thead th { background: #333; color: #fff; }
     #filters { margin-bottom: 1em; }
     select { margin-right: 1em; padding: 0.25em; font-size: 1em; }
+    #debug { margin-top: 2em; background: #f3f3f3; padding: 1em; border-left: 5px solid #777; white-space: pre-wrap; font-family: monospace; }
   </style>
 </head>
 <body>
 
-  <h1>Food Directory (with Dropdown Filters)</h1>
+  <h1>Food Directory (Dropdown Filters + Debug)</h1>
   <div id="filters">
     <label>
       Type:
@@ -44,9 +45,16 @@
     <tbody></tbody>
   </table>
 
+  <div id="debug"><strong>Debug Log:</strong></div>
+
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <script>
+    function debugLog(message) {
+      const debugBox = document.getElementById("debug");
+      debugBox.innerHTML += "<br>" + message;
+    }
+
     function uniqueValues(data, colIndex) {
       const set = new Set();
       data.forEach(row => {
@@ -91,9 +99,15 @@
       const query = encodeURIComponent("SELECT A, B, C, D, E, F");
       const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?sheet=${sheetName}&tq=${query}`;
 
+      debugLog("Fetching: " + url);
+
       fetch(url)
-        .then(res => res.text())
+        .then(res => {
+          debugLog("HTTP Status: " + res.status);
+          return res.text();
+        })
         .then(rep => {
+          debugLog("Received response length: " + rep.length);
           const json = JSON.parse(rep.substr(47).slice(0, -2));
           const data = json.table.rows.map(row => row.c.map(cell => cell ? cell.v : ""));
           const table = $('#foodTable').DataTable({
@@ -108,11 +122,12 @@
             ],
             pageLength: 25
           });
+          debugLog("DataTable initialized with " + data.length + " rows.");
           initFilters(table, data);
         })
         .catch(err => {
-          console.error("Error loading sheet:", err);
-          document.body.innerHTML = "<h2 style='color:red;'>⚠️ Failed to load data</h2>";
+          debugLog("❌ Error: " + err.message);
+          document.body.innerHTML = "<h2 style='color:red;'>⚠️ Failed to load data</h2><div id='debug'>" + document.getElementById("debug").innerHTML + "</div>";
         });
     }
 
